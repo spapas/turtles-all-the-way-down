@@ -10,6 +10,59 @@
             padding: 0;
             box-sizing: border-box;
         }
+
+        .color-palette {
+            
+            display: grid;
+            grid-template-columns: repeat(10, 30px);
+            gap: 2px;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 8px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            z-index: 20;
+        }
+        
+        .color-swatch {
+            width: 30px;
+            height: 30px;
+            border: 2px solid #ccc;
+            border-radius: 4px;
+            cursor: pointer;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            font-weight: bold;
+            color: white;
+            text-shadow: 1px 1px 1px rgba(0, 0, 0, 0.5);
+        }
+        
+        .color-swatch:hover {
+            border-color: #4f46e5;
+            transform: scale(1.1);
+            z-index: 1;
+        }
+        
+        .color-swatch.selected {
+            border-color: #4f46e5;
+            border-width: 3px;
+        }
+        
+        .color-swatch[data-color="#000000"] {
+            color: white;
+        }
+        
+        .color-swatch[data-color="#ffffff"] {
+            color: black;
+            text-shadow: none;
+        }
+        
+        .color-swatch[data-color="#ffff00"] {
+            color: black;
+            text-shadow: none;
+        }
         
         body {
             font-family: 'Courier New', monospace;
@@ -206,6 +259,7 @@
             <div class="language-selector">
                 <label for="language">Language: </label>
                 <select id="language">
+                    <option value="gr">Ελληνικά</option>
                     <option value="en">English</option>
                     <option value="es">Español</option>
                     <option value="fr">Français</option>
@@ -221,24 +275,24 @@
                 <button class="clear-btn" onclick="clearCanvas()">🗑 Clear</button>
                 <div class="speed-control">
                     <label>Speed:</label>
-                    <input type="range" id="speed" min="1" max="10" value="5" onchange="updateSpeed()">
+                    <input type="range" id="speed" min="10" max="100" value="5" onchange="updateSpeed()">
                 </div>
             </div>
             
             <textarea id="code" placeholder="Enter your Logo commands here...">
-# Try these commands:
-forward 100
-right 90
-forward 100
-right 90
-forward 100
-right 90
-forward 100
+# Δοκιμάστε αυτές τις εντολές:
+μπροστά 100
+δεξιά 90
+μπροστά 100
+δεξιά 90
+μπροστά 100
+δεξιά 90
+μπροστά 100
 
-# Draw a star
-repeat 5 [
-  forward 100
-  right 144
+# Ζωγραφίστε ένα αστέρι
+επανάλαβε 5 [
+  μπροστά 100
+  δεξιά 144
 ]</textarea>
             
             <div class="status" id="status">Ready to run Logo commands</div>
@@ -256,13 +310,8 @@ repeat 5 [
                 </div>
             </div>
             <div class="colors-help">
-                <h4>Available Commands:</h4>
-                <div id="help-text">
-                    <strong>Movement:</strong> forward/fd, back/bk, left/lt, right/rt<br>
-                    <strong>Pen:</strong> penup/pu, pendown/pd<br>
-                    <strong>Control:</strong> repeat, home, clearscreen/cs<br>
-                    <strong>Style:</strong> setcolor, setwidth<br>
-                    <strong>Example:</strong> forward 50, right 90, repeat 4 [forward 50 right 90]
+                <div id="colorPalette" class="color-palette">
+                    <!-- Color swatches will be added here dynamically -->
                 </div>
             </div>
         </div>
@@ -276,7 +325,28 @@ repeat 5 [
     </div>
 
     <script>
-        // Turtle graphics engine
+
+        const colorPalette = [
+            '#000000', '#ffffff', '#ff0000', '#00ff00',  // 0-3: black, white, red, green
+            '#0000ff', '#ffff00', '#ff00ff', '#00ffff',  // 4-7: blue, yellow, magenta, cyan
+            '#ffa500', '#800080', '#ffc0cb', '#a52a2a',  // 8-11: orange, purple, pink, brown
+            '#808080', '#c0c0c0', '#800000', '#008000',  // 12-15: gray, silver, maroon, dark green
+            '#000080', '#808000', '#ff6347', '#4682b4'   // 16-19: navy, olive, tomato, steel blue
+        ];
+        
+        const colorNames = {
+            'μαύρο': 0, 'άσπρο': 1, 'κόκκινο': 2, 'πράσινο': 3,
+            'μπλε': 4, 'κίτρινο': 5, 'μαζέντα': 6, 'κυανό': 7,
+            'πορτοκαλί': 8, 'μοβ': 9, 'ροζ': 10, 'καφέ': 11,
+            'γκρι': 12, 'ασημί': 13, 'μπορντώ': 14, 'σκούροπράσινο': 15,
+            'ναυτικό': 16, 'ελιά': 17, 'ντομάτα': 18, 'ατσάλι': 19,
+            'black': 0, 'white': 1, 'red': 2, 'green': 3,
+            'blue': 4, 'yellow': 5, 'magenta': 6, 'cyan': 7,
+            'orange': 8, 'purple': 9, 'pink': 10, 'brown': 11,
+            'gray': 12, 'silver': 13, 'maroon': 14, 'darkgreen': 15,
+            'navy': 16, 'olive': 17, 'tomato': 18, 'steelblue': 19
+        };
+        
         class TurtleEngine {
             constructor(canvas) {
                 this.canvas = canvas;
@@ -286,6 +356,7 @@ repeat 5 [
                 
                 // Animation settings
                 this.animationSpeed = 50; // ms between steps
+                
                 this.isAnimating = false;
                 this.currentStep = 0;
                 this.steps = [];
@@ -366,13 +437,41 @@ repeat 5 [
             }
             
             setColor(color) {
-                const colors = {
-                    'red': '#ff0000', 'green': '#00ff00', 'blue': '#0000ff',
-                    'yellow': '#ffff00', 'cyan': '#00ffff', 'magenta': '#ff00ff',
-                    'black': '#000000', 'white': '#ffffff', 'orange': '#ffa500',
-                    'purple': '#800080', 'pink': '#ffc0cb', 'brown': '#a52a2a'
-                };
-                this.penColor = colors[color.toLowerCase()] || color;
+                // Handle numeric color indices
+                if (typeof color === 'number' || !isNaN(parseInt(color))) {
+                    const index = parseInt(color);
+                    if (index >= 0 && index < colorPalette.length) {
+                        this.penColor = colorPalette[index];
+                        this.updateColorSelection(index);
+                        return;
+                    }
+                }
+                
+                // Handle color names (Greek and English)
+                const colorIndex = colorNames[color.toLowerCase()];
+                if (colorIndex !== undefined) {
+                    this.penColor = colorPalette[colorIndex];
+                    this.updateColorSelection(colorIndex);
+                    return;
+                }
+                
+                // Handle hex colors directly
+                if (color.startsWith('#')) {
+                    this.penColor = color;
+                    this.updateColorSelection(-1); // No selection for custom colors
+                    return;
+                }
+                
+                // Fallback: try to use as direct color
+                this.penColor = color;
+                this.updateColorSelection(-1);
+            }
+            
+            updateColorSelection(index) {
+                const swatches = document.querySelectorAll('.color-swatch');
+                swatches.forEach((swatch, i) => {
+                    swatch.classList.toggle('selected', i === index);
+                });
             }
             
             setWidth(width) {
@@ -382,6 +481,19 @@ repeat 5 [
         
         // Command localization
         const commandAliases = {
+            gr: {
+                'μπροστά': 'forward', 'μπ': 'forward', 'πίσω': 'back', 'πι': 'back',
+                'αριστερά': 'left', 'αρ': 'left', 'δεξιά': 'right', 'δε': 'right',
+                'σήκωσεμολύβι': 'penup', 'σμ': 'penup', 'κατέβασεμολύβι': 'pendown', 'κμ': 'pendown',
+                'επανάλαβε': 'repeat', 'σπίτι': 'home', 'καθάρισε': 'clearscreen', 'κα': 'clearscreen',
+                'βάλεχρώμα': 'setcolor', 'βάλεπλάτος': 'setwidth',
+                // English fallbacks
+                'forward': 'forward', 'fd': 'forward', 'back': 'back', 'bk': 'back',
+                'left': 'left', 'lt': 'left', 'right': 'right', 'rt': 'right',
+                'penup': 'penup', 'pu': 'penup', 'pendown': 'pendown', 'pd': 'pendown',
+                'repeat': 'repeat', 'home': 'home', 'clearscreen': 'clearscreen', 'cs': 'clearscreen',
+                'setcolor': 'setcolor', 'setwidth': 'setwidth'
+            },
             en: {
                 'forward': 'forward', 'fd': 'forward', 'back': 'back', 'bk': 'back',
                 'left': 'left', 'lt': 'left', 'right': 'right', 'rt': 'right',
@@ -445,6 +557,11 @@ repeat 5 [
         
         // Help text translations
         const helpTexts = {
+            gr: `<strong>Κίνηση:</strong> μπροστά/μπ, πίσω/πι, αριστερά/αρ, δεξιά/δε<br>
+                 <strong>Μολύβι:</strong> σήκωσεμολύβι/σμ, κατέβασεμολύβι/κμ<br>
+                 <strong>Έλεγχος:</strong> επανάλαβε, σπίτι, καθάρισε/κα<br>
+                 <strong>Στυλ:</strong> βάλεχρώμα, βάλεπλάτος<br>
+                 <strong>Παράδειγμα:</strong> μπροστά 50, δεξιά 90, επανάλαβε 4 [μπροστά 50 δεξιά 90]`,
             en: `<strong>Movement:</strong> forward/fd, back/bk, left/lt, right/rt<br>
                  <strong>Pen:</strong> penup/pu, pendown/pd<br>
                  <strong>Control:</strong> repeat, home, clearscreen/cs<br>
@@ -474,7 +591,7 @@ repeat 5 [
         
         // Logo parser and interpreter
         class LogoParser {
-            constructor(turtle, language = 'en') {
+            constructor(turtle, language = 'gr') {
                 this.turtle = turtle;
                 this.language = language;
                 this.aliases = commandAliases[language];
@@ -706,14 +823,7 @@ repeat 5 [
                 }
             }
         }
-        
-        // Global variables
-        let turtle;
-        let parser;
-        let isRunning = false;
-        let currentStepIndex = 0;
-        let executionSteps = [];
-        
+
         function initializeColorPalette() {
             const paletteContainer = document.getElementById('colorPalette');
             
@@ -739,12 +849,18 @@ repeat 5 [
                 paletteContainer.appendChild(swatch);
             });
         }
-
+        
+        // Global variables
+        let turtle;
+        let parser;
+        let isRunning = false;
+        let currentStepIndex = 0;
+        let executionSteps = [];
+        
         // Initialize
         window.addEventListener('load', () => {
             const canvas = document.getElementById('canvas');
             const container = canvas.parentElement;
-            initializeColorPalette();
             
             // Make canvas responsive
             function resizeCanvas() {
@@ -755,12 +871,14 @@ repeat 5 [
                     turtle.reset();
                 }
             }
+
+            initializeColorPalette();
             
             resizeCanvas();
             window.addEventListener('resize', resizeCanvas);
             
             turtle = new TurtleEngine(canvas);
-            parser = new LogoParser(turtle, 'en');
+            parser = new LogoParser(turtle, 'el');
             
             updateStatus('Ready to run Logo commands');
             
@@ -771,6 +889,8 @@ repeat 5 [
                 document.getElementById('help-text').innerHTML = helpTexts[lang];
                 updateStatus(`Language changed to ${lang}`);
             });
+            parser.setLanguage('gr');
+            document.getElementById('help-text').innerHTML = helpTexts['gr'];
         });
         
         // Control functions
@@ -869,7 +989,8 @@ repeat 5 [
         
         function updateSpeed() {
             const speed = document.getElementById('speed').value;
-            turtle.animationSpeed = 110 - (speed * 10); // Invert: higher value = faster
+            turtle.animationSpeed = (1000 - (speed * 10))/10; // Invert: higher value = faster
+            console.log(`Animation speed set to: ${turtle.animationSpeed} ms`);
         }
         
         function updateStatus(message) {
