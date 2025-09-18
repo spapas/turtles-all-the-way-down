@@ -1,0 +1,1007 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Logo Programming Environment</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Courier New', monospace;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .header {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            padding: 1rem;
+            color: white;
+            text-align: center;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .container {
+            display: flex;
+            flex: 1;
+            gap: 1rem;
+            padding: 1rem;
+            max-height: calc(100vh - 100px);
+        }
+        
+        .editor-panel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 12px;
+            padding: 1rem;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+        
+        .canvas-panel {
+            flex: 2;
+            display: flex;
+            flex-direction: column;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 12px;
+            padding: 1rem;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+        
+        .controls {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+            flex-wrap: wrap;
+        }
+        
+        button {
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: 6px;
+            background: #4f46e5;
+            color: white;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 0.9rem;
+            transition: all 0.2s;
+        }
+        
+        button:hover {
+            background: #4338ca;
+            transform: translateY(-1px);
+        }
+        
+        button:active {
+            transform: translateY(0);
+        }
+        
+        .clear-btn {
+            background: #ef4444;
+        }
+        
+        .clear-btn:hover {
+            background: #dc2626;
+        }
+        
+        .speed-control {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .speed-control label {
+            font-size: 0.9rem;
+            color: #374151;
+        }
+        
+        .speed-control input {
+            width: 80px;
+        }
+        
+        textarea {
+            flex: 1;
+            border: 2px solid #e5e7eb;
+            border-radius: 6px;
+            padding: 1rem;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            resize: none;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        
+        textarea:focus {
+            border-color: #4f46e5;
+        }
+        
+        .canvas-container {
+            flex: 1;
+            border: 2px solid #e5e7eb;
+            border-radius: 6px;
+            position: relative;
+            overflow: hidden;
+            background: white;
+        }
+        
+        canvas {
+            display: block;
+            cursor: crosshair;
+        }
+        
+        .status {
+            margin-top: 0.5rem;
+            padding: 0.5rem;
+            background: #f3f4f6;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            color: #374151;
+        }
+        
+        .commands-help {
+            margin-top: 1rem;
+            padding: 1rem;
+            background: #f9fafb;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            color: #4b5563;
+            line-height: 1.4;
+        }
+        
+        .commands-help h4 {
+            margin-bottom: 0.5rem;
+            color: #374151;
+        }
+        
+        .color-palette {
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
+            display: grid;
+            grid-template-columns: repeat(4, 30px);
+            gap: 2px;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 8px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            z-index: 20;
+        }
+        
+        .color-swatch {
+            width: 30px;
+            height: 30px;
+            border: 2px solid #ccc;
+            border-radius: 4px;
+            cursor: pointer;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            font-weight: bold;
+            color: white;
+            text-shadow: 1px 1px 1px rgba(0, 0, 0, 0.5);
+        }
+        
+        .color-swatch:hover {
+            border-color: #4f46e5;
+            transform: scale(1.1);
+            z-index: 1;
+        }
+        
+        .color-swatch.selected {
+            border-color: #4f46e5;
+            border-width: 3px;
+        }
+        
+        .color-swatch[data-color="#000000"] {
+            color: white;
+        }
+        
+        .color-swatch[data-color="#ffffff"] {
+            color: black;
+            text-shadow: none;
+        }
+        
+        .color-swatch[data-color="#ffff00"] {
+            color: black;
+            text-shadow: none;
+        }
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            transform-origin: center;
+            transition: all 0.1s ease-out;
+            z-index: 10;
+            pointer-events: none;
+        }
+        
+        .language-selector {
+            margin-bottom: 1rem;
+        }
+        
+        select {
+            padding: 0.5rem;
+            border: 2px solid #e5e7eb;
+            border-radius: 6px;
+            background: white;
+            font-family: inherit;
+        }
+        
+        .error {
+            color: #ef4444;
+            background: #fef2f2;
+            border: 1px solid #fecaca;
+            padding: 0.5rem;
+            border-radius: 4px;
+            margin-top: 0.5rem;
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🐢 Logo Programming Environment</h1>
+        <p>Draw with code using turtle graphics</p>
+    </div>
+    
+    <div class="container">
+        <div class="editor-panel">
+            <div class="language-selector">
+                <label for="language">Language: </label>
+                <select id="language">
+                    <option value="gr">Ελληνικά</option>
+                    <option value="en">English</option>
+                    <option value="es">Español</option>
+                    <option value="fr">Français</option>
+                    <option value="de">Deutsch</option>
+                    <option value="it">Italiano</option>
+                </select>
+            </div>
+            
+            <div class="controls">
+                <button onclick="runCode()">▶ Run</button>
+                <button onclick="stepCode()">⏯ Step</button>
+                <button onclick="stopExecution()">⏹ Stop</button>
+                <button class="clear-btn" onclick="clearCanvas()">🗑 Clear</button>
+                <div class="speed-control">
+                    <label>Speed:</label>
+                    <input type="range" id="speed" min="1" max="10" value="5" onchange="updateSpeed()">
+                </div>
+            </div>
+            
+            <textarea id="code" placeholder="Εισάγετε τις εντολές Logo εδώ...">
+# Δοκιμάστε αυτές τις εντολές:
+μπροστά 100
+δεξιά 90
+μπροστά 100
+δεξιά 90
+μπροστά 100
+δεξιά 90
+μπροστά 100
+
+# Ζωγραφίστε ένα αστέρι
+επανάλαβε 5 [
+  μπροστά 100
+  δεξιά 144
+]</textarea>
+            
+            <div class="status" id="status">Ready to run Logo commands</div>
+            
+            <div id="error" class="error" style="display: none;"></div>
+            
+            <div class="commands-help">
+                <h4>Available Commands:</h4>
+                <div id="help-text">
+                    <strong>Movement:</strong> forward/fd, back/bk, left/lt, right/rt<br>
+                    <strong>Pen:</strong> penup/pu, pendown/pd<br>
+                    <strong>Control:</strong> repeat, home, clearscreen/cs<br>
+                    <strong>Style:</strong> setcolor, setwidth<br>
+                    <strong>Example:</strong> forward 50, right 90, repeat 4 [forward 50 right 90]
+                </div>
+            </div>
+        </div>
+        
+        <div class="canvas-panel">
+            <div class="canvas-container">
+                <canvas id="canvas" width="600" height="400"></canvas>
+                <div class="turtle" id="turtle">🐢</div>
+                <div class="color-palette" id="colorPalette"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Color system with grid
+        const colorPalette = [
+            '#000000', '#ffffff', '#ff0000', '#00ff00',  // 0-3: black, white, red, green
+            '#0000ff', '#ffff00', '#ff00ff', '#00ffff',  // 4-7: blue, yellow, magenta, cyan
+            '#ffa500', '#800080', '#ffc0cb', '#a52a2a',  // 8-11: orange, purple, pink, brown
+            '#808080', '#c0c0c0', '#800000', '#008000',  // 12-15: gray, silver, maroon, dark green
+            '#000080', '#808000', '#ff6347', '#4682b4'   // 16-19: navy, olive, tomato, steel blue
+        ];
+        
+        const colorNames = {
+            'μαύρο': 0, 'άσπρο': 1, 'κόκκινο': 2, 'πράσινο': 3,
+            'μπλε': 4, 'κίτρινο': 5, 'μαζέντα': 6, 'κυανό': 7,
+            'πορτοκαλί': 8, 'μοβ': 9, 'ροζ': 10, 'καφέ': 11,
+            'γκρι': 12, 'ασημί': 13, 'μπορντώ': 14, 'σκούροπράσινο': 15,
+            'ναυτικό': 16, 'ελιά': 17, 'ντομάτα': 18, 'ατσάλι': 19,
+            'black': 0, 'white': 1, 'red': 2, 'green': 3,
+            'blue': 4, 'yellow': 5, 'magenta': 6, 'cyan': 7,
+            'orange': 8, 'purple': 9, 'pink': 10, 'brown': 11,
+            'gray': 12, 'silver': 13, 'maroon': 14, 'darkgreen': 15,
+            'navy': 16, 'olive': 17, 'tomato': 18, 'steelblue': 19
+        };
+        
+        // Turtle graphics engine
+        class TurtleEngine {
+            constructor(canvas) {
+                this.canvas = canvas;
+                this.ctx = canvas.getContext('2d');
+                this.turtleElement = document.getElementById('turtle');
+                this.reset();
+                
+                // Animation settings
+                this.animationSpeed = 50; // ms between steps
+                this.isAnimating = false;
+                this.currentStep = 0;
+                this.steps = [];
+                this.animationId = null;
+            }
+            
+            reset() {
+                this.x = this.canvas.width / 2;
+                this.y = this.canvas.height / 2;
+                this.angle = 0; // 0 = up, 90 = right, 180 = down, 270 = left
+                this.penIsDown = true;
+                this.penColor = '#000000';
+                this.penWidth = 2;
+                this.updateTurtlePosition();
+            }
+            
+            updateTurtlePosition() {
+                const rect = this.canvas.getBoundingClientRect();
+                const containerRect = this.canvas.parentElement.getBoundingClientRect();
+                console.log(rect, containerRect);
+                
+                this.turtleElement.style.left = (this.x - 10) + 'px';
+                this.turtleElement.style.top = (this.y - 10) + 'px';
+                this.turtleElement.style.transform = `rotate(${this.angle + 90}deg)`;
+            }
+            
+            forward(distance) {
+                const radians = (this.angle - 90) * Math.PI / 180;
+                const newX = this.x + distance * Math.cos(radians);
+                const newY = this.y + distance * Math.sin(radians);
+                
+                if (this.penIsDown) {
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(this.x, this.y);
+                    this.ctx.lineTo(newX, newY);
+                    this.ctx.strokeStyle = this.penColor;
+                    this.ctx.lineWidth = this.penWidth;
+                    this.ctx.lineCap = 'round';
+                    this.ctx.stroke();
+                }
+                
+                this.x = newX;
+                this.y = newY;
+                this.updateTurtlePosition();
+            }
+            
+            back(distance) {
+                this.forward(-distance);
+            }
+            
+            left(degrees) {
+                this.angle -= degrees;
+                this.updateTurtlePosition();
+            }
+            
+            right(degrees) {
+                this.angle += degrees;
+                this.updateTurtlePosition();
+            }
+            
+            penUp() {
+                this.penIsDown = false;
+            }
+            
+            penDown() {
+                this.penIsDown = true;
+            }
+            
+            home() {
+                this.x = this.canvas.width / 2;
+                this.y = this.canvas.height / 2;
+                this.angle = 0;
+                this.updateTurtlePosition();
+            }
+            
+            clearScreen() {
+                this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+                this.home();
+            }
+            
+            setColor(color) {
+                // Handle numeric color indices
+                if (typeof color === 'number' || !isNaN(parseInt(color))) {
+                    const index = parseInt(color);
+                    if (index >= 0 && index < colorPalette.length) {
+                        this.penColor = colorPalette[index];
+                        this.updateColorSelection(index);
+                        return;
+                    }
+                }
+                
+                // Handle color names (Greek and English)
+                const colorIndex = colorNames[color.toLowerCase()];
+                if (colorIndex !== undefined) {
+                    this.penColor = colorPalette[colorIndex];
+                    this.updateColorSelection(colorIndex);
+                    return;
+                }
+                
+                // Handle hex colors directly
+                if (color.startsWith('#')) {
+                    this.penColor = color;
+                    this.updateColorSelection(-1); // No selection for custom colors
+                    return;
+                }
+                
+                // Fallback: try to use as direct color
+                this.penColor = color;
+                this.updateColorSelection(-1);
+            }
+            
+            updateColorSelection(index) {
+                const swatches = document.querySelectorAll('.color-swatch');
+                swatches.forEach((swatch, i) => {
+                    swatch.classList.toggle('selected', i === index);
+                });
+            }
+            
+            setWidth(width) {
+                this.penWidth = Math.max(1, Math.min(20, width));
+            }
+        }
+        
+        // Command localization
+        const commandAliases = {
+            gr: {
+                'μπροστά': 'forward', 'μπ': 'forward', 'πίσω': 'back', 'πι': 'back',
+                'αριστερά': 'left', 'αρ': 'left', 'δεξιά': 'right', 'δε': 'right',
+                'σήκωσεμολύβι': 'penup', 'σμ': 'penup', 'κατέβασεμολύβι': 'pendown', 'κμ': 'pendown',
+                'επανάλαβε': 'repeat', 'σπίτι': 'home', 'καθάρισε': 'clearscreen', 'κα': 'clearscreen',
+                'βάλεχρώμα': 'setcolor', 'βάλεπλάτος': 'setwidth',
+                // English fallbacks
+                'forward': 'forward', 'fd': 'forward', 'back': 'back', 'bk': 'back',
+                'left': 'left', 'lt': 'left', 'right': 'right', 'rt': 'right',
+                'penup': 'penup', 'pu': 'penup', 'pendown': 'pendown', 'pd': 'pendown',
+                'repeat': 'repeat', 'home': 'home', 'clearscreen': 'clearscreen', 'cs': 'clearscreen',
+                'setcolor': 'setcolor', 'setwidth': 'setwidth'
+            },
+            en: {
+                'forward': 'forward', 'fd': 'forward', 'back': 'back', 'bk': 'back',
+                'left': 'left', 'lt': 'left', 'right': 'right', 'rt': 'right',
+                'penup': 'penup', 'pu': 'penup', 'pendown': 'pendown', 'pd': 'pendown',
+                'repeat': 'repeat', 'home': 'home', 'clearscreen': 'clearscreen', 'cs': 'clearscreen',
+                'setcolor': 'setcolor', 'setwidth': 'setwidth'
+            },
+            es: {
+                'adelante': 'forward', 'ad': 'forward', 'atras': 'back', 'at': 'back',
+                'izquierda': 'left', 'iz': 'left', 'derecha': 'right', 'de': 'right',
+                'subirlapiz': 'penup', 'sl': 'penup', 'bajarlapiz': 'pendown', 'bl': 'pendown',
+                'repetir': 'repeat', 'casa': 'home', 'limpiar': 'clearscreen', 'li': 'clearscreen',
+                'poncolor': 'setcolor', 'ponancho': 'setwidth',
+                // English fallbacks
+                'forward': 'forward', 'fd': 'forward', 'back': 'back', 'bk': 'back',
+                'left': 'left', 'lt': 'left', 'right': 'right', 'rt': 'right',
+                'penup': 'penup', 'pu': 'penup', 'pendown': 'pendown', 'pd': 'pendown',
+                'repeat': 'repeat', 'home': 'home', 'clearscreen': 'clearscreen', 'cs': 'clearscreen',
+                'setcolor': 'setcolor', 'setwidth': 'setwidth'
+            },
+            fr: {
+                'avance': 'forward', 'av': 'forward', 'recule': 'back', 're': 'back',
+                'gauche': 'left', 'ga': 'left', 'droite': 'right', 'dr': 'right',
+                'levecrayon': 'penup', 'lc': 'penup', 'baissecrayon': 'pendown', 'bc': 'pendown',
+                'repete': 'repeat', 'origine': 'home', 'efface': 'clearscreen', 'ef': 'clearscreen',
+                'fixecouleur': 'setcolor', 'fixelargeur': 'setwidth',
+                // English fallbacks
+                'forward': 'forward', 'fd': 'forward', 'back': 'back', 'bk': 'back',
+                'left': 'left', 'lt': 'left', 'right': 'right', 'rt': 'right',
+                'penup': 'penup', 'pu': 'penup', 'pendown': 'pendown', 'pd': 'pendown',
+                'repeat': 'repeat', 'home': 'home', 'clearscreen': 'clearscreen', 'cs': 'clearscreen',
+                'setcolor': 'setcolor', 'setwidth': 'setwidth'
+            },
+            de: {
+                'vorwaerts': 'forward', 'vw': 'forward', 'rueckwaerts': 'back', 'rw': 'back',
+                'links': 'left', 'li': 'left', 'rechts': 'right', 'rt': 'right',
+                'stifthoch': 'penup', 'sh': 'penup', 'stiftrunter': 'pendown', 'sr': 'pendown',
+                'wiederhole': 'repeat', 'startpos': 'home', 'loesche': 'clearscreen', 'ls': 'clearscreen',
+                'setzefarbe': 'setcolor', 'setzebreite': 'setwidth',
+                // English fallbacks
+                'forward': 'forward', 'fd': 'forward', 'back': 'back', 'bk': 'back',
+                'left': 'left', 'lt': 'left', 'right': 'right', 'rt': 'right',
+                'penup': 'penup', 'pu': 'penup', 'pendown': 'pendown', 'pd': 'pendown',
+                'repeat': 'repeat', 'home': 'home', 'clearscreen': 'clearscreen', 'cs': 'clearscreen',
+                'setcolor': 'setcolor', 'setwidth': 'setwidth'
+            },
+            it: {
+                'avanti': 'forward', 'av': 'forward', 'indietro': 'back', 'in': 'back',
+                'sinistra': 'left', 'si': 'left', 'destra': 'right', 'de': 'right',
+                'alzapenna': 'penup', 'ap': 'penup', 'abbassapenna': 'pendown', 'ab': 'pendown',
+                'ripeti': 'repeat', 'casa': 'home', 'pulisci': 'clearscreen', 'pu': 'clearscreen',
+                'impostacolore': 'setcolor', 'impostalarghezza': 'setwidth',
+                // English fallbacks
+                'forward': 'forward', 'fd': 'forward', 'back': 'back', 'bk': 'back',
+                'left': 'left', 'lt': 'left', 'right': 'right', 'rt': 'right',
+                'penup': 'penup', 'pu': 'penup', 'pendown': 'pendown', 'pd': 'pendown',
+                'repeat': 'repeat', 'home': 'home', 'clearscreen': 'clearscreen', 'cs': 'clearscreen',
+                'setcolor': 'setcolor', 'setwidth': 'setwidth'
+            }
+        };
+        
+        // Help text translations
+        const helpTexts = {
+            gr: `<strong>Κίνηση:</strong> μπροστά/μπ, πίσω/πι, αριστερά/αρ, δεξιά/δε<br>
+                 <strong>Μολύβι:</strong> σήκωσεμολύβι/σμ, κατέβασεμολύβι/κμ<br>
+                 <strong>Έλεγχος:</strong> επανάλαβε, σπίτι, καθάρισε/κα<br>
+                 <strong>Στυλ:</strong> βάλεχρώμα, βάλεπλάτος<br>
+                 <strong>Παράδειγμα:</strong> μπροστά 50, δεξιά 90, επανάλαβε 4 [μπροστά 50 δεξιά 90]`,
+            en: `<strong>Movement:</strong> forward/fd, back/bk, left/lt, right/rt<br>
+                 <strong>Pen:</strong> penup/pu, pendown/pd<br>
+                 <strong>Control:</strong> repeat, home, clearscreen/cs<br>
+                 <strong>Style:</strong> setcolor, setwidth<br>
+                 <strong>Example:</strong> forward 50, right 90, repeat 4 [forward 50 right 90]`,
+            es: `<strong>Movimiento:</strong> adelante/ad, atras/at, izquierda/iz, derecha/de<br>
+                 <strong>Lápiz:</strong> subirlapiz/sl, bajarlapiz/bl<br>
+                 <strong>Control:</strong> repetir, casa, limpiar/li<br>
+                 <strong>Estilo:</strong> poncolor, ponancho<br>
+                 <strong>Ejemplo:</strong> adelante 50, derecha 90, repetir 4 [adelante 50 derecha 90]`,
+            fr: `<strong>Mouvement:</strong> avance/av, recule/re, gauche/ga, droite/dr<br>
+                 <strong>Crayon:</strong> levecrayon/lc, baissecrayon/bc<br>
+                 <strong>Contrôle:</strong> repete, origine, efface/ef<br>
+                 <strong>Style:</strong> fixecouleur, fixelargeur<br>
+                 <strong>Exemple:</strong> avance 50, droite 90, repete 4 [avance 50 droite 90]`,
+            de: `<strong>Bewegung:</strong> vorwaerts/vw, rueckwaerts/rw, links/li, rechts/rt<br>
+                 <strong>Stift:</strong> stifthoch/sh, stiftrunter/sr<br>
+                 <strong>Kontrolle:</strong> wiederhole, startpos, loesche/ls<br>
+                 <strong>Stil:</strong> setzefarbe, setzebreite<br>
+                 <strong>Beispiel:</strong> vorwaerts 50, rechts 90, wiederhole 4 [vorwaerts 50 rechts 90]`,
+            it: `<strong>Movimento:</strong> avanti/av, indietro/in, sinistra/si, destra/de<br>
+                 <strong>Penna:</strong> alzapenna/ap, abbassapenna/ab<br>
+                 <strong>Controllo:</strong> ripeti, casa, pulisci/pu<br>
+                 <strong>Stile:</strong> impostacolore, impostalarghezza<br>
+                 <strong>Esempio:</strong> avanti 50, destra 90, ripeti 4 [avanti 50 destra 90]`
+        };
+        
+        // Logo parser and interpreter
+        class LogoParser {
+            constructor(turtle, language = 'en') {
+                this.turtle = turtle;
+                this.language = language;
+                this.aliases = commandAliases[language];
+            }
+            
+            setLanguage(language) {
+                this.language = language;
+                this.aliases = commandAliases[language];
+            }
+            
+            parse(code) {
+                // Remove comments
+                const lines = code.split('\n').map(line => 
+                    line.split('#')[0].trim()
+                ).filter(line => line.length > 0);
+                
+                const tokens = [];
+                for (const line of lines) {
+                    tokens.push(...this.tokenize(line));
+                }
+                
+                return this.parseTokens(tokens);
+            }
+            
+            tokenize(line) {
+                const tokens = [];
+                let current = '';
+                let inBrackets = false;
+                
+                for (let i = 0; i < line.length; i++) {
+                    const char = line[i];
+                    
+                    if (char === '[') {
+                        if (current.trim()) {
+                            tokens.push(current.trim());
+                            current = '';
+                        }
+                        inBrackets = true;
+                        tokens.push('[');
+                    } else if (char === ']') {
+                        if (current.trim()) {
+                            tokens.push(current.trim());
+                            current = '';
+                        }
+                        inBrackets = false;
+                        tokens.push(']');
+                    } else if (char === ' ' || char === '\t') {
+                        if (current.trim()) {
+                            tokens.push(current.trim());
+                            current = '';
+                        }
+                    } else {
+                        current += char;
+                    }
+                }
+                
+                if (current.trim()) {
+                    tokens.push(current.trim());
+                }
+                
+                return tokens;
+            }
+            
+            parseTokens(tokens) {
+                const commands = [];
+                let i = 0;
+                
+                while (i < tokens.length) {
+                    const result = this.parseCommand(tokens, i);
+                    if (result.command) {
+                        commands.push(result.command);
+                    }
+                    i = result.nextIndex;
+                }
+                
+                return commands;
+            }
+            
+            parseCommand(tokens, startIndex) {
+                if (startIndex >= tokens.length) {
+                    return { command: null, nextIndex: startIndex + 1 };
+                }
+                
+                const token = tokens[startIndex].toLowerCase();
+                const command = this.aliases[token];
+                
+                if (!command) {
+                    throw new Error(`Unknown command: ${tokens[startIndex]}`);
+                }
+                
+                switch (command) {
+                    case 'forward':
+                    case 'back':
+                    case 'left':
+                    case 'right':
+                    case 'setwidth':
+                        if (startIndex + 1 >= tokens.length) {
+                            throw new Error(`${command} requires a number`);
+                        }
+                        const value = parseFloat(tokens[startIndex + 1]);
+                        if (isNaN(value)) {
+                            throw new Error(`${command} requires a valid number`);
+                        }
+                        return {
+                            command: { type: command, value: value },
+                            nextIndex: startIndex + 2
+                        };
+                    
+                    case 'setcolor':
+                        if (startIndex + 1 >= tokens.length) {
+                            throw new Error(`setcolor requires a color`);
+                        }
+                        return {
+                            command: { type: 'setcolor', value: tokens[startIndex + 1] },
+                            nextIndex: startIndex + 2
+                        };
+                    
+                    case 'penup':
+                    case 'pendown':
+                    case 'home':
+                    case 'clearscreen':
+                        return {
+                            command: { type: command },
+                            nextIndex: startIndex + 1
+                        };
+                    
+                    case 'repeat':
+                        if (startIndex + 1 >= tokens.length) {
+                            throw new Error(`repeat requires a number`);
+                        }
+                        const count = parseInt(tokens[startIndex + 1]);
+                        if (isNaN(count)) {
+                            throw new Error(`repeat requires a valid number`);
+                        }
+                        
+                        if (startIndex + 2 >= tokens.length || tokens[startIndex + 2] !== '[') {
+                            throw new Error(`repeat requires commands in brackets [ ]`);
+                        }
+                        
+                        const blockResult = this.parseBlock(tokens, startIndex + 3);
+                        return {
+                            command: { type: 'repeat', count: count, commands: blockResult.commands },
+                            nextIndex: blockResult.nextIndex
+                        };
+                    
+                    default:
+                        throw new Error(`Unhandled command: ${command}`);
+                }
+            }
+            
+            parseBlock(tokens, startIndex) {
+                const commands = [];
+                let i = startIndex;
+                let bracketLevel = 1;
+                
+                while (i < tokens.length && bracketLevel > 0) {
+                    if (tokens[i] === '[') {
+                        bracketLevel++;
+                    } else if (tokens[i] === ']') {
+                        bracketLevel--;
+                        if (bracketLevel === 0) {
+                            break;
+                        }
+                    }
+                    
+                    if (bracketLevel === 1) {
+                        const result = this.parseCommand(tokens, i);
+                        if (result.command) {
+                            commands.push(result.command);
+                        }
+                        i = result.nextIndex;
+                    } else {
+                        i++;
+                    }
+                }
+                
+                if (bracketLevel > 0) {
+                    throw new Error(`Missing closing bracket ]`);
+                }
+                
+                return { commands: commands, nextIndex: i + 1 };
+            }
+            
+            execute(commands) {
+                const steps = [];
+                this.generateSteps(commands, steps);
+                return steps;
+            }
+            
+            generateSteps(commands, steps) {
+                for (const command of commands) {
+                    switch (command.type) {
+                        case 'forward':
+                            steps.push(() => this.turtle.forward(command.value));
+                            break;
+                        case 'back':
+                            steps.push(() => this.turtle.back(command.value));
+                            break;
+                        case 'left':
+                            steps.push(() => this.turtle.left(command.value));
+                            break;
+                        case 'right':
+                            steps.push(() => this.turtle.right(command.value));
+                            break;
+                        case 'penup':
+                            steps.push(() => this.turtle.penUp());
+                            break;
+                        case 'pendown':
+                            steps.push(() => this.turtle.penDown());
+                            break;
+                        case 'home':
+                            steps.push(() => this.turtle.home());
+                            break;
+                        case 'clearscreen':
+                            steps.push(() => this.turtle.clearScreen());
+                            break;
+                        case 'setcolor':
+                            steps.push(() => this.turtle.setColor(command.value));
+                            break;
+                        case 'setwidth':
+                            steps.push(() => this.turtle.setWidth(command.value));
+                            break;
+                        case 'repeat':
+                            for (let i = 0; i < command.count; i++) {
+                                this.generateSteps(command.commands, steps);
+                            }
+                            break;
+                    }
+                }
+            }
+        }
+        
+        // Global variables
+        let turtle;
+        let parser;
+        let isRunning = false;
+        let currentStepIndex = 0;
+        let executionSteps = [];
+        
+        // Initialize color palette
+        function initializeColorPalette() {
+            const paletteContainer = document.getElementById('colorPalette');
+            
+            colorPalette.forEach((color, index) => {
+                const swatch = document.createElement('div');
+                swatch.className = 'color-swatch';
+                swatch.style.backgroundColor = color;
+                swatch.setAttribute('data-color', color);
+                swatch.textContent = index;
+                swatch.title = `Color ${index}: ${color}`;
+                
+                // Add click handler
+                swatch.addEventListener('click', () => {
+                    turtle.setColor(index);
+                    updateStatus(`Χρώμα άλλαξε σε ${index} (${color})`);
+                });
+                
+                // Select black (index 0) by default
+                if (index === 0) {
+                    swatch.classList.add('selected');
+                }
+                
+                paletteContainer.appendChild(swatch);
+            });
+        }
+        
+        // Initialize
+        window.addEventListener('load', () => {
+            const canvas = document.getElementById('canvas');
+            const container = canvas.parentElement;
+            
+            // Make canvas responsive
+            function resizeCanvas() {
+                const rect = container.getBoundingClientRect();
+                canvas.width = rect.width - 2;
+                canvas.height = rect.height - 2;
+                if (turtle) {
+                    turtle.reset();
+                }
+            }
+            
+            resizeCanvas();
+            window.addEventListener('resize', resizeCanvas);
+            
+            turtle = new TurtleEngine(canvas);
+            parser = new LogoParser(turtle, 'gr');
+            
+            initializeColorPalette();
+            updateStatus('Έτοιμο για εκτέλεση εντολών Logo');
+            
+            // Set Greek help text by default
+            document.getElementById('help-text').innerHTML = helpTexts['gr'];
+            
+            // Language change handler
+            document.getElementById('language').addEventListener('change', (e) => {
+                const lang = e.target.value;
+                parser.setLanguage(lang);
+                document.getElementById('help-text').innerHTML = helpTexts[lang];
+                updateStatus(`Γλώσσα άλλαξε σε ${lang}`);
+            });
+        });
+        
+        // Control functions
+        function runCode() {
+            if (isRunning) {
+                updateStatus('Already running! Stop first.');
+                return;
+            }
+            
+            const code = document.getElementById('code').value;
+            hideError();
+            
+            try {
+                const commands = parser.parse(code);
+                executionSteps = parser.execute(commands);
+                currentStepIndex = 0;
+                isRunning = true;
+                
+                updateStatus(`Εκτελούνται ${executionSteps.length} βήματα...`);
+                executeNextStep();
+            } catch (error) {
+                showError(error.message);
+                updateStatus('Σφάλμα στον κώδικα');
+            }
+        }
+        
+        function executeNextStep() {
+            if (!isRunning || currentStepIndex >= executionSteps.length) {
+                isRunning = false;
+                updateStatus('Η εκτέλεση ολοκληρώθηκε');
+                return;
+            }
+            
+            try {
+                executionSteps[currentStepIndex]();
+                currentStepIndex++;
+                
+                updateStatus(`Βήμα ${currentStepIndex}/${executionSteps.length}`);
+                
+                setTimeout(executeNextStep, turtle.animationSpeed);
+            } catch (error) {
+                isRunning = false;
+                showError(error.message);
+                updateStatus('Σφάλμα εκτέλεσης');
+            }
+        }
+        
+        function stepCode() {
+            if (!executionSteps.length) {
+                const code = document.getElementById('code').value;
+                hideError();
+                
+                try {
+                    const commands = parser.parse(code);
+                    executionSteps = parser.execute(commands);
+                    currentStepIndex = 0;
+                    updateStatus(`Έτοιμο για βήμα προς βήμα εκτέλεση ${executionSteps.length} εντολών`);
+                } catch (error) {
+                    showError(error.message);
+                    updateStatus('Error in code');
+                    return;
+                }
+            }
+            
+            if (currentStepIndex < executionSteps.length) {
+                try {
+                    executionSteps[currentStepIndex]();
+                    currentStepIndex++;
+                    updateStatus(`Βήμα ${currentStepIndex}/${executionSteps.length}`);
+                    
+                    if (currentStepIndex >= executionSteps.length) {
+                        updateStatus('Η εκτέλεση βήμα προς βήμα ολοκληρώθηκε');
+                        executionSteps = [];
+                    }
+                } catch (error) {
+                    showError(error.message);
+                    updateStatus('Runtime error');
+                }
+            } else {
+                updateStatus('Δεν υπάρχουν άλλα βήματα');
+            }
+        }
+        
+        function stopExecution() {
+            isRunning = false;
+            executionSteps = [];
+            currentStepIndex = 0;
+            updateStatus('Η εκτέλεση σταμάτησε');
+        }
+        
+        function clearCanvas() {
+            turtle.clearScreen();
+            stopExecution();
+            updateStatus('Ο καμβάς καθαρίστηκε');
+        }
+        
+        function updateSpeed() {
+            const speed = document.getElementById('speed').value;
+            turtle.animationSpeed = 110 - (speed * 10); // Invert: higher value = faster
+        }
+        
+        function updateStatus(message) {
+            document.getElementById('status').textContent = message;
+        }
+        
+        function showError(message) {
+            const errorElement = document.getElementById('error');
+            errorElement.textContent = message;
+            errorElement.style.display = 'block';
+        }
+        
+        function hideError() {
+            document.getElementById('error').style.display = 'none';
+        }
+    </script>
+</body>
+</html>
