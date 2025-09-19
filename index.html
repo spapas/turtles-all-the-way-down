@@ -42,18 +42,10 @@
             
             <textarea id="code" placeholder="Enter your Logo commands here...">
 # Δοκιμάστε αυτές τις εντολές:
-μπροστά 100
-δεξιά 90
-μπροστά 100
-δεξιά 90
-μπροστά 100
-δεξιά 90
-μπροστά 100
-
-# Ζωγραφίστε ένα αστέρι
-επανάλαβε 5 [
-  μπροστά 100
-  δεξιά 144
+repeat 72 [
+  setcolor :val  / 12 + 5
+  forward :val  * 4
+  right 60
 ]</textarea>
             
             <div class="status" id="status">Ready to run Logo commands</div>

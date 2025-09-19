@@ -290,6 +290,28 @@ class LogoParser {
     this.aliases = commandAliases[language];
   }
 
+  // Evaluate arithmetic expressions with variables and random
+  evalExpression(expr, context = {}) {
+    // Replace :var with value from context
+    expr = expr.replace(/:([a-zA-Z0-9_]+)/g, (m, v) => {
+      if (context[v] !== undefined) return context[v];
+      throw new Error(`Unknown variable: :${v}`);
+    });
+    // Replace 'random N' with a random integer
+    expr = expr.replace(/random\s+([0-9]+)/gi, (m, n) => Math.floor(Math.random() * Number(n)));
+    // Only allow numbers, operators, parentheses, and spaces
+    if (!/^[-+*/(). 0-9]+$/.test(expr)) {
+      throw new Error('Invalid characters in expression: ' + expr);
+    }
+    // Evaluate safely
+    try {
+      // eslint-disable-next-line no-eval
+      return Function('return (' + expr + ')')();
+    } catch (e) {
+      throw new Error('Invalid expression: ' + expr);
+    }
+  }
+
   parse(code) {
     // Remove comments
     const lines = code.split('\n').map(line =>
@@ -362,18 +384,22 @@ class LogoParser {
     return commands;
   }
 
-  // Evaluate a value token (number, nested command, or variable)
+  // Evaluate a value token (number, nested command, variable, or expression)
   evalValue(token, context = {}) {
+    // Arithmetic expression (contains + - * / or parentheses) - check first!
+    if (typeof token === 'string' && /[+\-*/()]/.test(token)) {
+      return this.evalExpression(token, context);
+    }
     // Variable (e.g. :val)
     if (typeof token === 'string' && token.startsWith(':')) {
       const varName = token.slice(1);
       if (context[varName] !== undefined) return context[varName];
       throw new Error(`Unknown variable: ${token}`);
     }
-  // Number (accept string numbers too)
-  if (typeof token === 'number') return token;
-  if (typeof token === 'string' && !isNaN(token) && token.trim() !== '') return parseFloat(token);
-  if (!isNaN(parseFloat(token)) && isFinite(token)) return parseFloat(token);
+    // Number (accept string numbers too)
+    if (typeof token === 'number') return token;
+    if (typeof token === 'string' && !isNaN(token) && token.trim() !== '') return parseFloat(token);
+    if (!isNaN(parseFloat(token)) && isFinite(token)) return parseFloat(token);
     // Nested command node (e.g. random)
     if (typeof token === 'object' && token.type) {
       switch (token.type) {
@@ -386,7 +412,58 @@ class LogoParser {
       }
     }
     // Fallback: string
+    // Try to parse as number if possible
+    if (!isNaN(token) && token.trim() !== '') return parseFloat(token);
     return token;
+  }
+
+  // Parse arithmetic expression that may span multiple tokens
+  parseExpression(tokens, startIndex) {
+    let expression = '';
+    let i = startIndex;
+    
+    // Look ahead to collect tokens that form an arithmetic expression
+    while (i < tokens.length) {
+      const token = tokens[i];
+      
+      // Stop if we hit a bracket or a known command
+      if (token === '[' || token === ']') break;
+      if (this.aliases[token?.toLowerCase?.()] && 
+          !this.isExpressionToken(token)) break;
+      
+      // Add token to expression with proper spacing
+      if (expression) {
+        expression += ' ';
+      }
+      expression += token;
+      i++;
+      
+      // If this token completes a simple expression (no operators after it), we can stop
+      if (!this.isOperator(token) && 
+          (i >= tokens.length || !this.isOperator(tokens[i]))) {
+        // Check if next token is an operator, if not, we're done
+        if (i >= tokens.length || 
+            tokens[i] === '[' || tokens[i] === ']' ||
+            this.aliases[tokens[i]?.toLowerCase?.()] && !this.isExpressionToken(tokens[i])) {
+          break;
+        }
+      }
+    }
+    
+    return {
+      expression: expression.trim(),
+      nextIndex: i
+    };
+  }
+  
+  // Check if token is an operator
+  isOperator(token) {
+    return /^[+\-*/()]$/.test(token);
+  }
+  
+  // Check if token can be part of an expression
+  isExpressionToken(token) {
+    return /^[+\-*/():0-9.]+$/.test(token) || token.startsWith(':');
   }
 
   parseCommand(tokens, startIndex, context = {}) {
@@ -430,24 +507,11 @@ class LogoParser {
         if (startIndex + 1 >= tokens.length) {
           throw new Error(`${command} requires a number`);
         }
-        // Support nested expressions (e.g. forward random 50)
-        let valueToken = tokens[startIndex + 1];
-        // If it's a nested command
-        if (this.aliases[valueToken?.toLowerCase?.()] === 'random') {
-          const nested = this.parseCommand(tokens, startIndex + 1, context);
-          valueToken = nested.command;
-          return {
-            command: { type: command, value: valueToken },
-            nextIndex: nested.nextIndex
-          };
-        }
-        const value = parseFloat(valueToken);
-        if (isNaN(value)) {
-          throw new Error(`${command} requires a valid number`);
-        }
+        // Parse arithmetic expression that may span multiple tokens
+        const exprResult = this.parseExpression(tokens, startIndex + 1);
         return {
-          command: { type: command, value: valueToken },
-          nextIndex: startIndex + 2
+          command: { type: command, value: exprResult.expression },
+          nextIndex: exprResult.nextIndex
         };
       }
 
@@ -455,8 +519,8 @@ class LogoParser {
         if (startIndex + 1 >= tokens.length) {
           throw new Error(`setcolor requires a color`);
         }
+        // First check if it's a nested random command
         let valueToken = tokens[startIndex + 1];
-        // Support nested random (setcolor random 5)
         if (this.aliases[valueToken?.toLowerCase?.()] === 'random') {
           const nested = this.parseCommand(tokens, startIndex + 1, context);
           valueToken = nested.command;
@@ -465,9 +529,11 @@ class LogoParser {
             nextIndex: nested.nextIndex
           };
         }
+        // Otherwise parse as expression (for color names or indices)
+        const exprResult = this.parseExpression(tokens, startIndex + 1);
         return {
-          command: { type: 'setcolor', value: valueToken },
-          nextIndex: startIndex + 2
+          command: { type: 'setcolor', value: exprResult.expression },
+          nextIndex: exprResult.nextIndex
         };
       }
 
@@ -485,15 +551,16 @@ class LogoParser {
         if (startIndex + 1 >= tokens.length) {
           throw new Error(`repeat requires a number`);
         }
-        // Evaluate the repeat count (can be number, variable, or expression)
-        const count = this.evalValue(tokens[startIndex + 1], context);
+        // Parse the repeat count expression
+        const exprResult = this.parseExpression(tokens, startIndex + 1);
+        const count = this.evalValue(exprResult.expression, context);
         if (typeof count !== 'number' || isNaN(count)) {
           throw new Error(`repeat requires a valid number`);
         }
-        if (startIndex + 2 >= tokens.length || tokens[startIndex + 2] !== '[') {
+        if (exprResult.nextIndex >= tokens.length || tokens[exprResult.nextIndex] !== '[') {
           throw new Error(`repeat requires commands in brackets [ ]`);
         }
-  const blockResult = this.parseBlock(tokens, startIndex + 3, context);
+        const blockResult = this.parseBlock(tokens, exprResult.nextIndex + 1, context);
         return {
           command: { type: 'repeat', count: count, commands: blockResult.commands },
           nextIndex: blockResult.nextIndex
