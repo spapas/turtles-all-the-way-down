@@ -301,7 +301,7 @@ class LogoParser {
       tokens.push(...this.tokenize(line));
     }
 
-    return this.parseTokens(tokens);
+  return this.parseTokens(tokens, {});
   }
 
   tokenize(line) {
@@ -344,11 +344,15 @@ class LogoParser {
   }
 
   parseTokens(tokens) {
+    return this.parseTokens(tokens, context = {});
+  }
+
+  parseTokens(tokens, context = {}) {
     const commands = [];
     let i = 0;
 
     while (i < tokens.length) {
-      const result = this.parseCommand(tokens, i);
+      const result = this.parseCommand(tokens, i, context);
       if (result.command) {
         commands.push(result.command);
       }
@@ -366,8 +370,10 @@ class LogoParser {
       if (context[varName] !== undefined) return context[varName];
       throw new Error(`Unknown variable: ${token}`);
     }
-    // Number
-    if (typeof token === 'number' || (!isNaN(parseFloat(token)) && isFinite(token))) return parseFloat(token);
+  // Number (accept string numbers too)
+  if (typeof token === 'number') return token;
+  if (typeof token === 'string' && !isNaN(token) && token.trim() !== '') return parseFloat(token);
+  if (!isNaN(parseFloat(token)) && isFinite(token)) return parseFloat(token);
     // Nested command node (e.g. random)
     if (typeof token === 'object' && token.type) {
       switch (token.type) {
@@ -383,7 +389,7 @@ class LogoParser {
     return token;
   }
 
-  parseCommand(tokens, startIndex) {
+  parseCommand(tokens, startIndex, context = {}) {
     if (startIndex >= tokens.length) {
       return { command: null, nextIndex: startIndex + 1 };
     }
@@ -402,7 +408,7 @@ class LogoParser {
       let valueToken = tokens[startIndex + 1];
       // Support nested random (e.g. random random 5)
       if (this.aliases[valueToken?.toLowerCase?.()] === 'random') {
-        const nested = this.parseCommand(tokens, startIndex + 1);
+        const nested = this.parseCommand(tokens, startIndex + 1, context);
         valueToken = nested.command;
         return {
           command: { type: 'random', value: valueToken },
@@ -428,7 +434,7 @@ class LogoParser {
         let valueToken = tokens[startIndex + 1];
         // If it's a nested command
         if (this.aliases[valueToken?.toLowerCase?.()] === 'random') {
-          const nested = this.parseCommand(tokens, startIndex + 1);
+          const nested = this.parseCommand(tokens, startIndex + 1, context);
           valueToken = nested.command;
           return {
             command: { type: command, value: valueToken },
@@ -452,7 +458,7 @@ class LogoParser {
         let valueToken = tokens[startIndex + 1];
         // Support nested random (setcolor random 5)
         if (this.aliases[valueToken?.toLowerCase?.()] === 'random') {
-          const nested = this.parseCommand(tokens, startIndex + 1);
+          const nested = this.parseCommand(tokens, startIndex + 1, context);
           valueToken = nested.command;
           return {
             command: { type: 'setcolor', value: valueToken },
@@ -474,31 +480,32 @@ class LogoParser {
           nextIndex: startIndex + 1
         };
 
-      case 'repeat':
+
+      case 'repeat': {
         if (startIndex + 1 >= tokens.length) {
           throw new Error(`repeat requires a number`);
         }
-        const count = parseInt(tokens[startIndex + 1]);
-        if (isNaN(count)) {
+        // Evaluate the repeat count (can be number, variable, or expression)
+        const count = this.evalValue(tokens[startIndex + 1], context);
+        if (typeof count !== 'number' || isNaN(count)) {
           throw new Error(`repeat requires a valid number`);
         }
-
         if (startIndex + 2 >= tokens.length || tokens[startIndex + 2] !== '[') {
           throw new Error(`repeat requires commands in brackets [ ]`);
         }
-
-        const blockResult = this.parseBlock(tokens, startIndex + 3);
+  const blockResult = this.parseBlock(tokens, startIndex + 3, context);
         return {
           command: { type: 'repeat', count: count, commands: blockResult.commands },
           nextIndex: blockResult.nextIndex
         };
+      }
 
       default:
         throw new Error(`Unhandled command: ${command}`);
     }
   }
 
-  parseBlock(tokens, startIndex) {
+  parseBlock(tokens, startIndex, context = {}) {
     const commands = [];
     let i = startIndex;
     let bracketLevel = 1;
@@ -514,7 +521,7 @@ class LogoParser {
       }
 
       if (bracketLevel === 1) {
-        const result = this.parseCommand(tokens, i);
+        const result = this.parseCommand(tokens, i, context);
         if (result.command) {
           commands.push(result.command);
         }
@@ -572,8 +579,8 @@ class LogoParser {
           break;
         case 'repeat':
           for (let i = 0; i < command.count; i++) {
-            // Pass loop variable :val in context
-            const newContext = { ...context, val: i };
+            // Pass loop variable :val and :rep in context
+            const newContext = { ...context, val: i, rep: i };
             this.generateSteps(command.commands, steps, newContext);
           }
           break;
@@ -673,7 +680,8 @@ function runCode() {
     updateStatus(`Running ${executionSteps.length} steps...`);
     executeNextStep();
   } catch (error) {
-    showError(error.message);
+    window.lastError = error;
+    showError(error);
     updateStatus('Error in code');
   }
 }
@@ -694,7 +702,8 @@ function executeNextStep() {
     setTimeout(executeNextStep, turtle.animationSpeed);
   } catch (error) {
     isRunning = false;
-    showError(error.message);
+    window.lastError = error;
+    showError(error);
     updateStatus('Runtime error');
   }
 }
@@ -710,7 +719,8 @@ function stepCode() {
       currentStepIndex = 0;
       updateStatus(`Ready to step through ${executionSteps.length} commands`);
     } catch (error) {
-      showError(error.message);
+      window.lastError = error;
+      showError(error);
       updateStatus('Error in code');
       return;
     }
@@ -727,7 +737,8 @@ function stepCode() {
         executionSteps = [];
       }
     } catch (error) {
-      showError(error.message);
+      window.lastError = error;
+      showError(error);
       updateStatus('Runtime error');
     }
   } else {
@@ -760,8 +771,18 @@ function updateStatus(message) {
 
 function showError(message) {
   const errorElement = document.getElementById('error');
-  errorElement.textContent = message;
+  if (typeof message === 'object' && message !== null && message.message) {
+    errorElement.textContent = message.message;
+  } else {
+    errorElement.textContent = message;
+  }
   errorElement.style.display = 'block';
+  // Print stacktrace if available
+  if (typeof message === 'object' && message.stack) {
+    console.error('Error stacktrace:', message.stack);
+  } else if (window.lastError && window.lastError.stack) {
+    console.error('Error stacktrace:', window.lastError.stack);
+  }
 }
 
 function hideError() {
