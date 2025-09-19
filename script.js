@@ -175,7 +175,7 @@ const commandAliases = {
     'penup': 'penup', 'pu': 'penup', 'pendown': 'pendown', 'pd': 'pendown',
     'repeat': 'repeat', 'home': 'home', 'clearscreen': 'clearscreen', 'cs': 'clearscreen',
     'setcolor': 'setcolor', 'setwidth': 'setwidth',
-    'random': 'random'
+    'τυχαίο': 'random', 'τυ': 'random', 'random': 'random'
   },
   en: {
     'forward': 'forward', 'fd': 'forward', 'back': 'back', 'bk': 'back',
@@ -247,7 +247,7 @@ const commandAliases = {
 const helpTexts = {
   gr: `<strong>Κίνηση:</strong> μπροστά/μπ, πίσω/πι, αριστερά/αρ, δεξιά/δε<br>
                  <strong>Μολύβι:</strong> σήκωσεμολύβι/σμ, κατέβασεμολύβι/κμ<br>
-                 <strong>Έλεγχος:</strong> επανάλαβε/επ, σπίτι/σπ, καθάρισε/κα<br>
+                 <strong>Έλεγχος:</strong> επανάλαβε/επ, σπίτι/σπ, καθάρισε/κα, τυχαίο/τυ<br>
                  <strong>Στυλ:</strong> βάλεχρώμα/χρ, βάλεπλάτος/πλ<br>
                  <strong>Παράδειγμα:</strong> μπροστά 50, δεξιά 90, επανάλαβε 4 [μπροστά 50 δεξιά 90]`,
   en: `<strong>Movement:</strong> forward/fd, back/bk, left/lt, right/rt<br>
